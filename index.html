@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Audio Player</title>
+  <style>
+    :root{
+      --bg:#0a0f1f;
+      --card:rgba(255,255,255,.06);
+      --stroke:rgba(255,255,255,.10);
+      --text:#eef3ff;
+      --muted:#aab6da;
+      --a:#6ee7ff;
+      --b:#a78bfa;
+      --r:24px;
+      --shadow: 0 22px 60px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(110,231,255,.18), transparent 60%),
+        radial-gradient(1200px 600px at 90% 0%, rgba(167,139,250,.18), transparent 60%),
+        radial-gradient(900px 600px at 50% 110%, rgba(110,231,255,.10), transparent 60%),
+        var(--bg);
+      display:grid;
+      place-items:center;
+      padding:22px;
+    }
+
+    .phone{
+      width:min(420px, 100%);
+      border-radius: 34px;
+      border:1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+
+    .status{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 16px 18px 10px;
+      color:rgba(255,255,255,.82);
+      font-weight:700;
+      letter-spacing:.2px;
+      font-size:14px;
+    }
+    .status .dots{display:flex; gap:6px; align-items:center}
+    .status .dot{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.55)}
+
+    .app{
+      padding: 12px 18px 22px;
+      display:grid;
+      gap:16px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .pill{
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.04);
+      padding:8px 12px;
+      border-radius:999px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+    .iconbtn{
+      width:42px;height:42px;
+      border-radius:16px;
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.04);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      user-select:none;
+    }
+    .iconbtn:active{transform: translateY(1px)}
+    .iconbtn svg{width:20px;height:20px;opacity:.92}
+
+    .artWrap{
+      margin: 4px auto 0;
+      width:min(280px, 78vw);
+      aspect-ratio:1/1;
+      border-radius: 28px;
+      border:1px solid rgba(255,255,255,.12);
+      background:
+        radial-gradient(900px 400px at 30% 20%, rgba(110,231,255,.24), transparent 55%),
+        radial-gradient(900px 400px at 90% 20%, rgba(167,139,250,.22), transparent 58%),
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      position:relative;
+      overflow:hidden;
+      box-shadow: 0 18px 55px rgba(0,0,0,.42);
+      display:grid;
+      place-items:center;
+    }
+
+    .vinyl{
+      width: 66%;
+      aspect-ratio:1/1;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,.22), rgba(255,255,255,.02) 52%, rgba(0,0,0,.25) 54%),
+        conic-gradient(from 180deg, rgba(110,231,255,.00), rgba(110,231,255,.18), rgba(167,139,250,.18), rgba(110,231,255,.00));
+      filter: saturate(1.1);
+      animation: spin 8s linear infinite;
+      animation-play-state: paused;
+    }
+    .vinyl::after{
+      content:"";
+      position:absolute;
+      width: 16%;
+      aspect-ratio:1/1;
+      border-radius:999px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.18);
+    }
+    @keyframes spin{to{transform: rotate(360deg)}}
+
+    .meta{
+      display:grid;
+      gap:6px;
+      text-align:center;
+      padding: 0 8px;
+    }
+    .title{font-size:18px;font-weight:900;letter-spacing:.2px}
+    .artist{color:var(--muted); font-size:13px; font-weight:700}
+
+    .progress{
+      display:grid;
+      gap:8px;
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--stroke);
+      border-radius: 18px;
+      padding: 12px 12px;
+    }
+    .times{display:flex; justify-content:space-between; color:var(--muted); font-size:12px; font-weight:800}
+
+    input[type="range"]{
+      -webkit-appearance:none;
+      width:100%;
+      height: 6px;
+      border-radius:999px;
+      background: rgba(255,255,255,.10);
+      outline:none;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      width: 18px; height:18px;
+      border-radius:999px;
+      background: linear-gradient(135deg, var(--a), var(--b));
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow: 0 10px 25px rgba(0,0,0,.35);
+      cursor:pointer;
+    }
+
+    .controls{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:12px;
+      align-items:center;
+    }
+    .play{
+      width:72px;height:72px;
+      margin:0 auto;
+      border-radius: 26px;
+      border:1px solid rgba(110,231,255,.28);
+      background: linear-gradient(135deg, rgba(110,231,255,.18), rgba(167,139,250,.14));
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      box-shadow: 0 18px 40px rgba(0,0,0,.34);
+      user-select:none;
+    }
+    .play svg{width:28px;height:28px}
+
+    .mini{
+      height:52px;
+      border-radius:18px;
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.04);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      cursor:pointer;
+      user-select:none;
+      font-weight:800;
+      color:rgba(255,255,255,.88);
+    }
+    .mini span{font-size:13px}
+    .mini svg{width:20px;height:20px;opacity:.9}
+
+    .bottom{
+      display:grid;
+      gap:10px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+    }
+    .chip{
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.03);
+      padding:8px 10px;
+      border-radius:999px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .eq{
+      height: 22px;
+      display:flex;
+      gap:4px;
+      align-items:flex-end;
+      justify-content:center;
+      opacity:.9;
+    }
+    .bar{
+      width:5px;
+      height: 6px;
+      border-radius:999px;
+      background: linear-gradient(180deg, var(--a), var(--b));
+      transform-origin: bottom;
+      animation: bounce 800ms ease-in-out infinite;
+      animation-play-state: paused;
+    }
+    .bar:nth-child(2){animation-delay:120ms}
+    .bar:nth-child(3){animation-delay:240ms}
+    .bar:nth-child(4){animation-delay:360ms}
+    .bar:nth-child(5){animation-delay:480ms}
+    @keyframes bounce{
+      0%,100%{transform: scaleY(.55)}
+      50%{transform: scaleY(1.35)}
+    }
+
+    /* Overlay for autoplay blocked */
+    .overlay{
+      position:absolute;
+      inset:0;
+      display:none;
+      place-items:center;
+      padding: 26px;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+    }
+    .overlay.show{display:grid}
+    .modal{
+      width:min(360px, 100%);
+      border-radius: 24px;
+      border:1px solid rgba(255,255,255,.14);
+      background: linear-gradient(180deg, rgba(16,26,53,.92), rgba(16,26,53,.72));
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display:grid;
+      gap:12px;
+      text-align:center;
+    }
+    .modal h3{margin:0; font-size:16px}
+    .modal p{margin:0; color:var(--muted); font-size:13px; line-height:1.5}
+    .modal .actions{display:grid; gap:10px}
+    .modal button{
+      border:1px solid rgba(110,231,255,.28);
+      background: linear-gradient(135deg, rgba(110,231,255,.18), rgba(167,139,250,.14));
+      color:var(--text);
+      font-weight:900;
+      padding: 12px 14px;
+      border-radius: 16px;
+      cursor:pointer;
+    }
+    .modal .ghost{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+    }
+
+    .hint{font-size:11px; color:rgba(255,255,255,.68)}
+  </style>
+</head>
+<body>
+  <div class="phone" role="application" aria-label="Mobile Audio Player">
+    <div class="status">
+      <div id="clock">--:--</div>
+      <div class="dots" aria-hidden="true">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="topbar">
+        <div class="pill">Now Playing</div>
+        <div class="iconbtn" id="shareBtn" title="Salin link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/>
+            <path d="M16 6l-4-4-4 4"/>
+            <path d="M12 2v13"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="artWrap" aria-label="Artwork">
+        <div class="vinyl" id="vinyl" aria-hidden="true"></div>
+      </div>
+
+      <div class="meta">
+        <div class="title" id="trackTitle">Single Track</div>
+        <div class="artist" id="trackArtist">Jumpshare Link</div>
+        <div class="eq" aria-hidden="true">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        </div>
+      </div>
+
+      <div class="progress" aria-label="Progress">
+        <input id="seek" type="range" min="0" max="1000" value="0" />
+        <div class="times">
+          <span id="cur">0:00</span>
+          <span id="dur">0:00</span>
+        </div>
+      </div>
+
+      <div class="controls" aria-label="Controls">
+        <div class="mini" id="back10" title="Mundur 10 detik">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 1 0 10 10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span>-10s</span>
+        </div>
+
+        <div class="play" id="playBtn" aria-label="Play/Pause">
+          <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+        </div>
+
+        <div class="mini" id="fwd10" title="Maju 10 detik">
+          <span>+10s</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 1 1-10 10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="bottom">
+        <div class="row">
+          <div class="chip" id="speedChip" title="Ubah kecepatan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a10 10 0 1 0 10 10"/>
+              <path d="M12 12l3-3"/>
+            </svg>
+            <span id="speedLabel">1.0×</span>
+          </div>
+
+          <div class="chip" id="muteChip" title="Mute/Unmute">
+            <svg id="volIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 5 6 9H2v6h4l5 4z"/>
+              <path d="M19 9a3 3 0 0 1 0 6"/>
+              <path d="M22 7a7 7 0 0 1 0 10"/>
+            </svg>
+            <span id="muteLabel">Sound</span>
+          </div>
+        </div>
+
+        <div class="hint" id="hint">Autoplay dicoba otomatis. Jika diblok browser, akan muncul tombol untuk mulai.</div>
+      </div>
+
+      <!-- Hidden audio element (custom UI above) -->
+      <audio id="audio" preload="auto" playsinline></audio>
+    </div>
+
+    <!-- Autoplay overlay -->
+    <div class="overlay" id="overlay" aria-hidden="true">
+      <div class="modal">
+        <h3 id="overlayTitle">Mulai Audio</h3>
+        <p id="overlayDesc">Browser biasanya butuh satu tap untuk memulai audio.</p>
+        <div class="actions">
+          <button id="overlayBtn">Tap untuk Play</button>
+          <button class="ghost" id="overlayClose">Tutup</button>
+        </div>
+        <div class="hint">Tip: setelah audio jalan, kamu bisa atur speed dan mute.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== SONG SOURCE (LOCAL FILE) ======
+    // Pakai audio lokal: taruh file mp3 di folder yang sama dengan file HTML ini.
+    // Nama file yang dipakai di bawah harus sama persis.
+    const AUDIO_URL = "./soundcloudaud.com_Sex Noise Prank.mp3";
+
+    // Judul yang tampil di UI
+    const TRACK_TITLE = "Fast & Furious";
+    const TRACK_ARTIST = "Youtube Music";
+
+    // ====== ELEMENTS ======
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const seek = document.getElementById('seek');
+    const cur = document.getElementById('cur');
+    const dur = document.getElementById('dur');
+    const vinyl = document.getElementById('vinyl');
+    const bars = Array.from(document.querySelectorAll('.bar'));
+    const overlay = document.getElementById('overlay');
+    const overlayBtn = document.getElementById('overlayBtn');
+    const overlayClose = document.getElementById('overlayClose');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayDesc = document.getElementById('overlayDesc');
+    const trackTitleEl = document.getElementById('trackTitle');
+    const trackArtistEl = document.getElementById('trackArtist');
+    const hint = document.getElementById('hint');
+
+    const back10 = document.getElementById('back10');
+    const fwd10 = document.getElementById('fwd10');
+
+    const speedChip = document.getElementById('speedChip');
+    const speedLabel = document.getElementById('speedLabel');
+
+    const muteChip = document.getElementById('muteChip');
+    const muteLabel = document.getElementById('muteLabel');
+    const volIcon = document.getElementById('volIcon');
+
+    const shareBtn = document.getElementById('shareBtn');
+
+    // ====== HELPERS ======
+    const fmt = (s) => {
+      if(!isFinite(s) || s < 0) return '0:00';
+      const m = Math.floor(s/60);
+      const r = Math.floor(s%60);
+      return `${m}:${r.toString().padStart(2,'0')}`;
+    };
+
+    function setPlayingUI(isPlaying){
+      if(isPlaying){
+        playIcon.innerHTML = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"></path>';
+        vinyl.style.animationPlayState = 'running';
+        bars.forEach(b => b.style.animationPlayState = 'running');
+      } else {
+        playIcon.innerHTML = '<path d="M8 5v14l11-7z"></path>';
+        vinyl.style.animationPlayState = 'paused';
+        bars.forEach(b => b.style.animationPlayState = 'paused');
+      }
+    }
+
+    function showOverlay(title, desc, btnText){
+      overlayTitle.textContent = title;
+      overlayDesc.textContent = desc;
+      overlayBtn.textContent = btnText || 'Tap untuk Play';
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden','false');
+    }
+    function hideOverlay(){
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden','true');
+    }
+
+    async function tryAutoplay(){
+      // Autoplay dengan suara sering diblokir. Kita coba dulu suara ON,
+      // kalau gagal, coba autoplay muted (lebih sering lolos), lalu minta tap untuk unmute.
+      audio.muted = false;
+      try{
+        await audio.play();
+        setPlayingUI(true);
+        hideOverlay();
+        hint.textContent = 'Autoplay berhasil.';
+        return;
+      }catch(e1){
+        // try muted autoplay
+        audio.muted = true;
+        try{
+          await audio.play();
+          setPlayingUI(true);
+          hint.textContent = 'Audio autoplay tapi masih mute (dibatasi browser). Tap tombol Sound untuk nyalakan.';
+          showOverlay('Autoplay (Muted)', 'Audio sudah jalan tapi masih mute. Tap tombol di bawah untuk nyalakan suara.', 'Nyalakan Suara');
+          overlayBtn.dataset.mode = 'unmute';
+          return;
+        }catch(e2){
+          setPlayingUI(false);
+          hint.textContent = 'Autoplay diblok. Butuh 1 tap untuk mulai.';
+          showOverlay('Autoplay Diblok', 'Browser butuh satu interaksi (tap) untuk memutar audio.', 'Tap untuk Play');
+          overlayBtn.dataset.mode = 'play';
+        }
+      }
+    }
+
+    // ====== INIT ======
+    trackTitleEl.textContent = TRACK_TITLE;
+    trackArtistEl.textContent = TRACK_ARTIST;
+
+    audio.src = AUDIO_URL;
+    audio.autoplay = true;
+
+    // update time
+    audio.addEventListener('loadedmetadata', () => {
+      dur.textContent = fmt(audio.duration);
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      cur.textContent = fmt(audio.currentTime);
+      if(isFinite(audio.duration) && audio.duration > 0){
+        const v = Math.round((audio.currentTime / audio.duration) * 1000);
+        if(!seek.matches(':active')) seek.value = String(v);
+      }
+    });
+
+    audio.addEventListener('play', () => setPlayingUI(true));
+    audio.addEventListener('pause', () => setPlayingUI(false));
+
+    // Seek
+    seek.addEventListener('input', () => {
+      if(isFinite(audio.duration) && audio.duration > 0){
+        audio.currentTime = (Number(seek.value) / 1000) * audio.duration;
+      }
+    });
+
+    // Play/Pause
+    async function togglePlay(){
+      if(audio.paused){
+        try{
+          await audio.play();
+          if(audio.muted){
+            // If user explicitly plays, we can safely unmute
+            audio.muted = false;
+            updateMuteUI();
+          }
+        }catch(e){
+          showOverlay('Tidak bisa memutar', 'Link audio mungkin tidak bisa diakses dari browser kamu. Coba refresh atau ganti sumber audio.', 'Tutup');
+          overlayBtn.dataset.mode = 'close';
+        }
+      } else {
+        audio.pause();
+      }
+    }
+    playBtn.addEventListener('click', togglePlay);
+
+    back10.addEventListener('click', () => audio.currentTime = Math.max(0, (audio.currentTime || 0) - 10));
+    fwd10.addEventListener('click', () => audio.currentTime = Math.min(audio.duration || 0, (audio.currentTime || 0) + 10));
+
+    // Speed
+    const speeds = [0.75, 1, 1.25, 1.5, 2];
+    let speedIdx = 1;
+    function updateSpeedUI(){
+      audio.playbackRate = speeds[speedIdx];
+      speedLabel.textContent = `${speeds[speedIdx].toFixed(2).replace(/\.00$/,'')}×`;
+    }
+    speedChip.addEventListener('click', () => {
+      speedIdx = (speedIdx + 1) % speeds.length;
+      updateSpeedUI();
+    });
+    updateSpeedUI();
+
+    // Mute
+    function updateMuteUI(){
+      muteLabel.textContent = audio.muted ? 'Muted' : 'Sound';
+      volIcon.innerHTML = audio.muted
+        ? '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M23 9 17 15"/><path d="M17 9 23 15"/>'
+        : '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19 9a3 3 0 0 1 0 6"/><path d="M22 7a7 7 0 0 1 0 10"/>';
+    }
+    muteChip.addEventListener('click', async () => {
+      audio.muted = !audio.muted;
+      updateMuteUI();
+      // if unmuting while paused, attempt play
+      if(!audio.muted && audio.paused){
+        try{ await audio.play(); } catch(_){}
+      }
+      if(!audio.muted) hideOverlay();
+    });
+    updateMuteUI();
+
+    // Overlay buttons
+    overlayBtn.addEventListener('click', async () => {
+      const mode = overlayBtn.dataset.mode || 'play';
+      if(mode === 'unmute'){
+        audio.muted = false;
+        updateMuteUI();
+        try{ await audio.play(); } catch(_){}
+        hideOverlay();
+        return;
+      }
+      if(mode === 'close'){
+        hideOverlay();
+        return;
+      }
+      // default: play
+      try{
+        audio.muted = false;
+        updateMuteUI();
+        await audio.play();
+        hideOverlay();
+      }catch(e){
+        // keep overlay
+      }
+    });
+    overlayClose.addEventListener('click', hideOverlay);
+
+    // Share: copy link
+    shareBtn.addEventListener('click', async () => {
+      try{
+        await navigator.clipboard.writeText(window.location.href);
+        hint.textContent = 'Link halaman disalin ke clipboard.';
+        setTimeout(() => (hint.textContent = 'Autoplay dicoba otomatis. Jika diblok browser, akan muncul tombol untuk mulai.'), 1200);
+      }catch(e){
+        hint.textContent = 'Tidak bisa akses clipboard di browser ini.';
+      }
+    });
+
+    // Clock (fake status bar)
+    function tick(){
+      const d = new Date();
+      const h = d.getHours().toString().padStart(2,'0');
+      const m = d.getMinutes().toString().padStart(2,'0');
+      document.getElementById('clock').textContent = `${h}:${m}`;
+    }
+    tick();
+    setInterval(tick, 5000);
+
+    // Kick off autoplay as soon as possible
+    window.addEventListener('load', () => {
+      tryAutoplay();
+    });
+
+    // If user touches anywhere, attempt play (helps on iOS)
+    let firstGesture = false;
+    function onFirstGesture(){
+      if(firstGesture) return;
+      firstGesture = true;
+      // Try to start (or unmute) on first user interaction
+      if(audio.paused){
+        audio.muted = false;
+        updateMuteUI();
+        audio.play().then(() => hideOverlay()).catch(() => {});
+      }
+      window.removeEventListener('pointerdown', onFirstGesture);
+      window.removeEventListener('touchstart', onFirstGesture);
+    }
+    window.addEventListener('pointerdown', onFirstGesture, {passive:true});
+    window.addEventListener('touchstart', onFirstGesture, {passive:true});
+  </script>
+</body>
+</html>
